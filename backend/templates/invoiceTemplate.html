@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <title>Hóa đơn Vận chuyển</title>
+
+    <style>
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            font-size: 11pt;
+        }
+
+        .invoice-container {
+            width: 100%;
+            padding: 30px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 20pt;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+
+        .header-info {
+            text-align: center;
+            font-size: 10pt;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 13pt;
+            font-weight: bold;
+            margin: 15px 0 8px 0;
+            border-bottom: 2px solid #333;
+            padding-bottom: 3px;
+            color: #2c3e50;
+        }
+
+        .address-box {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 20px;
+            display: inline-block;
+            width: 48%;
+            box-sizing: border-box;
+            vertical-align: top;
+        }
+
+        .left { float: left; }
+        .right { float: right; }
+        .clearfix::after {
+            content: "";
+            clear: both;
+            display: table;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        table th {
+            background-color: #f2f2f2;
+            font-size: 10pt;
+            text-transform: uppercase;
+        }
+
+        .summary {
+            margin-top: 20px;
+            text-align: right;
+            font-size: 12pt;
+        }
+
+        .summary-row {
+            margin-top: 8px;
+        }
+
+        .total-price {
+            font-size: 16pt;
+            font-weight: bold;
+            color: #e74c3c;
+            border-top: 3px double #333;
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+
+        .status {
+            font-weight: bold;
+            color: #3498db;
+        }
+
+        .note {
+            margin-top: 25px;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+            font-size: 10pt;
+            color: #777;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="invoice-container">
+        <h1>PHIẾU GIAO HÀNG / HÓA ĐƠN</h1>
+        <div class="header-info">
+            Mã đơn hàng: <strong>{{orderId}}</strong> | Ngày tạo: {{createdAt}}
+        </div>
+
+        <div class="clearfix">
+            <div class="address-box left">
+                <div class="section-title" style="margin-top: 0;">THÔNG TIN NGƯỜI GỬI</div>
+                <p><strong>Họ tên:</strong> {{sender_name}}</p>
+                <p><strong>Điện thoại:</strong> {{sender_phone}}</p>
+                <p><strong>Địa chỉ lấy hàng:</strong> {{pickup_address}}</p>
+            </div>
+            
+            <div class="address-box right">
+                <div class="section-title" style="margin-top: 0;">THÔNG TIN NGƯỜI NHẬN</div>
+                <p><strong>Họ tên:</strong> {{receiver_name}}</p>
+                <p><strong>Điện thoại:</strong> {{receiver_phone}}</p>
+                <p><strong>Địa chỉ giao hàng:</strong> {{delivery_address}}</p>
+            </div>
+        </div>
+        
+        <div class="section-title">CHI TIẾT DỊCH VỤ</div>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 40%;">Mô tả Hàng hóa / Dịch vụ</th>
+                    <th style="width: 20%;">Trọng lượng (kg)</th>
+                    <th style="width: 20%;">Loại xe / Gói</th>
+                    <th style="width: 20%;">Phụ phí/Hỗ trợ</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{package_type}} - Dịch vụ {{service_type}}</td>
+                    <td>{{weight_kg}}</td>
+                    <td>{{vehicle_type}}</td>
+                    <td>Bốc vác: {{workers}} người | Tầng: {{floors}}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="summary">
+            <div class="summary-row">
+                <strong style="width: 150px; display: inline-block;">TRẠNG THÁI:</strong> 
+                <span class="status">{{status}}</span>
+            </div>
+            <div class="total-price summary-row">
+                <strong style="width: 150px; display: inline-block;">TỔNG THANH TOÁN:</strong> 
+                {{price}} VNĐ
+            </div>
+        </div>
+
+        <div class="note">
+            <p><strong>Ghi chú:</strong> {{note}}</p>
+            <p style="text-align: center; margin-top: 15px;">
+                Cảm ơn bạn đã tin tưởng và sử dụng dịch vụ vận chuyển của chúng tôi.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
