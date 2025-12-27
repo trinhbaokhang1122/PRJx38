@@ -4,9 +4,8 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { FaLock, FaTruck, FaArrowLeft, FaCheckCircle } from "react-icons/fa";
 
 const ResetPassword = () => {
-  const { token } = useParams(); // Lấy mã token từ URL
+  const { token } = useParams();
   const navigate = useNavigate();
-  
   const [formData, setFormData] = useState({
     password: "",
     confirmPassword: "",
@@ -35,7 +34,6 @@ const ResetPassword = () => {
       });
       setMessage("✅ " + res.data.message);
       setSuccess(true);
-      // Chuyển hướng sau 2 giây nếu thành công
       setTimeout(() => navigate("/login"), 2500);
     } catch (error) {
       setMessage("❌ " + (error.response?.data?.message || "Đã có lỗi xảy ra!"));

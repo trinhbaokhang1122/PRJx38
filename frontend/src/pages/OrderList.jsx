@@ -6,11 +6,8 @@ function OrderList() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  // modal
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [orderToCancel, setOrderToCancel] = useState(null);
-
   const fetchOrders = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -29,13 +26,11 @@ function OrderList() {
     fetchOrders();
   }, []);
 
-  // mở modal
   const openCancelModal = (id) => {
     setOrderToCancel(id);
     setShowCancelModal(true);
   };
 
-  // xử lý hủy đơn
   const confirmCancel = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -120,7 +115,6 @@ function OrderList() {
         </table>
       )}
 
-      {/* ================= MODAL HỦY ĐƠN ================= */}
       {showCancelModal && (
         <div style={modal.overlay}>
           <div style={modal.box}>
@@ -155,7 +149,7 @@ function OrderList() {
   );
 }
 
-/* ---------------------- STYLES ------------------------- */
+
 const styles = {
   container: {
     maxWidth: 960,
@@ -248,7 +242,7 @@ const styles = {
   statusOther: { color: "#2563eb" },
 };
 
-/* ---------------------- MODAL STYLE ------------------------- */
+
 const modal = {
   overlay: {
     position: "fixed",

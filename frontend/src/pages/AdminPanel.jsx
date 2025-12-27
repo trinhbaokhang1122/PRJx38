@@ -7,38 +7,42 @@ const AdminPanel = () => {
   const [loading, setLoading] = useState(true);
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
-
-  // PHÂN TRANG ĐƠN HÀNG
   const [currentPage, setCurrentPage] = useState(1);
   const ordersPerPage = 30;
-
-  // MODAL SA THẢI
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [teamToDelete, setTeamToDelete] = useState(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchAdminData = async () => {
       try {
         const token = localStorage.getItem("token");
-        const config = { headers: { Authorization: `Bearer ${token}` } };
+        if (!token) {
+          console.error("Không tìm thấy token");
+          return;
+        }
 
-        const [teamRes, orderRes] = await Promise.all([
+        const config = {
+          headers: { Authorization: `Bearer ${token}` },
+        };
+
+        const [teamsResponse, ordersResponse] = await Promise.all([
           axios.get("http://localhost:5000/api/teams", config),
           axios.get("http://localhost:5000/api/orders/all", config),
         ]);
 
-        setTeams(teamRes.data);
-        setOrders(orderRes.data);
-      } catch (err) {
-        console.error("❌ Lỗi tải dữ liệu admin:", err);
+        setTeams(teamsResponse.data || []);
+        setOrders(ordersResponse.data || []);
+      } catch (error) {
+        console.error("❌ Lỗi tải dữ liệu admin:", error.response?.data || error.message);
+        alert("Không thể tải dữ liệu. Vui lòng kiểm tra kết nối hoặc đăng nhập lại.");
       } finally {
         setLoading(false);
       }
     };
-    fetchData();
+
+    fetchAdminData();
   }, []);
 
-  // LOGIC PHÂN TRANG
   const indexOfLastOrder = currentPage * ordersPerPage;
   const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
   const currentOrders = orders.slice(indexOfFirstOrder, indexOfLastOrder);
@@ -46,39 +50,74 @@ const AdminPanel = () => {
 
   const paginate = (pageNumber) => {
     setCurrentPage(pageNumber);
-    // Cuộn nhẹ lên đầu bảng đơn hàng để người dùng dễ quan sát
-    const section = document.getElementById("orders-section");
-    if (section) section.scrollIntoView({ behavior: "smooth" });
+    document
+      .getElementById("orders-section")
+      ?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // DUYỆT ĐỘI
-  const approveTeam = async (id) => {
+  const approveTeam = async (teamId) => {
     try {
       const token = localStorage.getItem("token");
-      const config = { headers: { Authorization: `Bearer ${token}` } };
-      await axios.put(`http://localhost:5000/api/teams/approve/${id}`, {}, config);
-      setTeams((prev) =>
-        prev.map((team) => (team._id === id ? { ...team, status: "approved" } : team))
+      await axios.put(
+        `http://localhost:5000/api/teams/approve/${teamId}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-    } catch (err) {
-      console.error("❌ Lỗi khi duyệt đội");
+
+      setTeams((prev) =>
+        prev.map((team) =>
+          team._id === teamId ? { ...team, status: "approved" } : team
+        )
+      );
+    } catch (error) {
+      console.error("❌ Lỗi duyệt đội:", error);
+      alert("Không thể duyệt đội. Vui lòng thử lại.");
     }
   };
 
-  // SA THẢI ĐỘI
+  const confirmDeleteTeam = (teamId) => {
+    setTeamToDelete(teamId);
+    setShowDeleteModal(true);
+  };
+
   const deleteTeam = async () => {
+    if (!teamToDelete) return;
+
     try {
       const token = localStorage.getItem("token");
-      const config = { headers: { Authorization: `Bearer ${token}` } };
-      await axios.delete(`http://localhost:5000/api/teams/${teamToDelete}`, config);
+      await axios.delete(`http://localhost:5000/api/teams/${teamToDelete}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
       setTeams((prev) => prev.filter((t) => t._id !== teamToDelete));
       setShowDeleteModal(false);
-    } catch (err) {
-      console.error("❌ Lỗi khi xóa đội");
+      setTeamToDelete(null);
+    } catch (error) {
+      console.error("❌ Lỗi xóa đội:", error);
+      alert("Không thể xóa đội. Vui lòng thử lại.");
     }
   };
 
-  if (loading) return <div style={styles.loading}>Đang tải dữ liệu hệ thống...</div>;
+  const getOrderStatusText = (status) => {
+    switch (status) {
+      case "pending":
+        return "Chờ xử lý";
+      case "assigned":
+        return "Đã giao đội";
+      case "in_transit":
+        return "Đang giao";
+      case "delivered":
+        return "Hoàn thành";
+      case "cancelled":
+        return "Đã hủy";
+      default:
+        return status || "Không xác định";
+    }
+  };
+
+  if (loading) {
+    return <div style={styles.loading}>Đang tải dữ liệu hệ thống...</div>;
+  }
 
   return (
     <div style={styles.page}>
@@ -96,148 +135,249 @@ const AdminPanel = () => {
         </div>
       </header>
 
-      {/* ==== DANH SÁCH ĐỘI ==== */}
       <section style={styles.section}>
         <h3 style={styles.sectionTitle}>🚚 Danh sách đội vận chuyển</h3>
-        <div style={styles.tableWrapper}>
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={styles.th}>Tên đội</th>
-                <th style={styles.th}>Trưởng đội</th>
-                <th style={styles.th}>Thành viên</th>
-                <th style={styles.th}>Khu vực</th>
-                <th style={styles.th}>Trạng thái</th>
-                <th style={styles.th}>Hành động</th>
-              </tr>
-            </thead>
-            <tbody>
-              {teams.map((team) => (
-                <tr key={team._id} style={styles.tr}>
-                  <td style={styles.tdPrimary} onClick={() => setSelectedTeam(team)}>
-                    {team.team_name || team.name}
-                  </td>
-                  <td style={styles.td}>{team.owner?.full_name || "N/A"}</td>
-                  <td style={{ ...styles.td, textAlign: "center" }}>{team.member_count || 0}</td>
-                  <td style={styles.td}>{team.region}</td>
-                  <td style={styles.td}>
-                    <span style={team.status === "approved" ? styles.badgeApproved : styles.badgePending}>
-                      {team.status === "approved" ? "● Đã duyệt" : "● Chờ duyệt"}
-                    </span>
-                  </td>
-                  <td style={styles.td}>
-                    <div style={styles.btnGroup}>
-                      {team.status !== "approved" && (
-                        <button onClick={() => approveTeam(team._id)} style={styles.btnApprove}>Duyệt</button>
-                      )}
-                      <button onClick={() => { setTeamToDelete(team._id); setShowDeleteModal(true); }} style={styles.btnDelete}>Sa thải</button>
-                    </div>
-                  </td>
+        {teams.length === 0 ? (
+          <p style={{ textAlign: "center", color: "#666", padding: "40px 0" }}>
+            Chưa có đội vận chuyển nào đăng ký.
+          </p>
+        ) : (
+          <div style={styles.tableWrapper}>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>Tên đội</th>
+                  <th style={styles.th}>Trưởng đội</th>
+                  <th style={styles.th}>Thành viên</th>
+                  <th style={styles.th}>Khu vực</th>
+                  <th style={styles.th}>Trạng thái</th>
+                  <th style={styles.th}>Hành động</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* ==== DANH SÁCH ĐƠN ==== */}
-      <section id="orders-section" style={styles.section}>
-        <h3 style={styles.sectionTitle}>📦 Danh sách vận đơn</h3>
-        <div style={styles.tableWrapper}>
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={styles.th}>Mã đơn</th>
-                <th style={styles.th}>Người tạo</th>
-                <th style={styles.th}>Giá</th>
-                <th style={styles.th}>Ngày tạo</th>
-                <th style={styles.th}>Trạng thái</th>
-                <th style={styles.th}>Hành động</th>
-              </tr>
-            </thead>
-            <tbody>
-              {currentOrders.map((order) => (
-                <tr key={order._id} style={styles.tr}>
-                  <td style={styles.idText}>#{order._id.slice(-6).toUpperCase()}</td>
-                  <td style={styles.td}>{order.user?.full_name || "Ẩn danh"}</td>
-                  <td style={styles.priceText}>{order.price?.toLocaleString()}₫</td>
-                  <td style={styles.td}>{new Date(order.createdAt).toLocaleDateString("vi-VN")}</td>
-                  <td style={styles.td}>
-                    <span style={styles.statusBadge(order.status)}>
-                      {order.status === "delivered" ? "Hoàn thành" : order.status === "pending" ? "Chờ xử lý" : "Đã hủy"}
-                    </span>
-                  </td>
-                  <td style={styles.td}>
-                    <button onClick={() => setSelectedOrder(order)} style={styles.btnDetail}>Chi tiết</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* UI PHÂN TRANG */}
-        {totalPages > 1 && (
-          <div style={styles.pagination}>
-            <button disabled={currentPage === 1} onClick={() => paginate(currentPage - 1)} style={styles.pageArrow}>Trước</button>
-            {[...Array(totalPages)].map((_, i) => (
-              <button
-                key={i + 1}
-                onClick={() => paginate(i + 1)}
-                style={{
-                  ...styles.pageNumber,
-                  backgroundColor: currentPage === i + 1 ? "#007bff" : "#fff",
-                  color: currentPage === i + 1 ? "#fff" : "#333",
-                }}
-              >
-                {i + 1}
-              </button>
-            ))}
-            <button disabled={currentPage === totalPages} onClick={() => paginate(currentPage + 1)} style={styles.pageArrow}>Sau</button>
+              </thead>
+              <tbody>
+                {teams.map((team) => (
+                  <tr key={team._id} style={styles.tr}>
+                    <td
+                      style={styles.tdPrimary}
+                      onClick={() => setSelectedTeam(team)}
+                    >
+                      {team.team_name || team.name || "Chưa đặt tên"}
+                    </td>
+                    <td style={styles.td}>
+                      {team.owner?.full_name || "Không xác định"}
+                    </td>
+                    <td style={{ ...styles.td, textAlign: "center" }}>
+                      {team.member_count || 0}
+                    </td>
+                    <td style={styles.td}>{team.region || "-"}</td>
+                    <td style={styles.td}>
+                      <span
+                        style={
+                          team.status === "approved"
+                            ? styles.badgeApproved
+                            : styles.badgePending
+                        }
+                      >
+                        {team.status === "approved" ? "● Đã duyệt" : "● Chờ duyệt"}
+                      </span>
+                    </td>
+                    <td style={styles.td}>
+                      <div style={styles.btnGroup}>
+                        {team.status !== "approved" && (
+                          <button
+                            onClick={() => approveTeam(team._id)}
+                            style={styles.btnApprove}
+                          >
+                            Duyệt
+                          </button>
+                        )}
+                        <button
+                          onClick={() => confirmDeleteTeam(team._id)}
+                          style={styles.btnDelete}
+                        >
+                          Sa thải
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </section>
 
-      {/* ==== CÁC MODAL (CHỈ CẬP NHẬT STYLE) ==== */}
+      <section id="orders-section" style={styles.section}>
+        <h3 style={styles.sectionTitle}>📦 Danh sách vận đơn</h3>
+        {orders.length === 0 ? (
+          <p style={{ textAlign: "center", color: "#666", padding: "40px 0" }}>
+            Chưa có đơn hàng nào được tạo.
+          </p>
+        ) : (
+          <>
+            <div style={styles.tableWrapper}>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>Mã đơn</th>
+                    <th style={styles.th}>Người tạo</th>
+                    <th style={styles.th}>Giá</th>
+                    <th style={styles.th}>Ngày tạo</th>
+                    <th style={styles.th}>Trạng thái</th>
+                    <th style={styles.th}>Hành động</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentOrders.map((order) => (
+                    <tr key={order._id} style={styles.tr}>
+                      <td style={styles.idText}>
+                        #{order._id.slice(-6).toUpperCase()}
+                      </td>
+                      <td style={styles.td}>
+                        {order.user?.full_name || "Ẩn danh"}
+                      </td>
+                      <td style={styles.priceText}>
+                        {order.price?.toLocaleString() || 0}₫
+                      </td>
+                      <td style={styles.td}>
+                        {new Date(order.createdAt).toLocaleDateString("vi-VN")}
+                      </td>
+                      <td style={styles.td}>
+                        <span style={styles.statusBadge(order.status)}>
+                          {getOrderStatusText(order.status)}
+                        </span>
+                      </td>
+                      <td style={styles.td}>
+                        <button
+                          onClick={() => setSelectedOrder(order)}
+                          style={styles.btnDetail}
+                        >
+                          Chi tiết
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {totalPages > 1 && (
+              <div style={styles.pagination}>
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => paginate(currentPage - 1)}
+                  style={styles.pageArrow}
+                >
+                  Trước
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <button
+                    key={i + 1}
+                    onClick={() => paginate(i + 1)}
+                    style={{
+                      ...styles.pageNumber,
+                      backgroundColor:
+                        currentPage === i + 1 ? "#007bff" : "#fff",
+                      color: currentPage === i + 1 ? "#fff" : "#333",
+                    }}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => paginate(currentPage + 1)}
+                  style={styles.pageArrow}
+                >
+                  Sau
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </section>
+
       {selectedTeam && (
         <div style={styles.overlay} onClick={() => setSelectedTeam(null)}>
           <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <h2 style={{borderBottom: '1px solid #eee', paddingBottom: '10px'}}>🔍 {selectedTeam.team_name}</h2>
+            <h2 style={{ borderBottom: "1px solid #eee", paddingBottom: "10px" }}>
+              🔍 {selectedTeam.team_name || selectedTeam.name}
+            </h2>
             <div style={styles.modalContent}>
-               <p><b>Trưởng đội:</b> {selectedTeam.owner?.full_name}</p>
-               <p><b>Khu vực:</b> {selectedTeam.region}</p>
-               <p><b>Mô tả:</b> {selectedTeam.description || "Không có"}</p>
-               <p><b>Giá cơ bản:</b> {selectedTeam.price?.toLocaleString()}₫</p>
+              <p>
+                <b>Trưởng đội:</b> {selectedTeam.owner?.full_name || "Không xác định"}
+              </p>
+              <p>
+                <b>Khu vực:</b> {selectedTeam.region || "Toàn quốc"}
+              </p>
+              <p>
+                <b>Mô tả:</b> {selectedTeam.description || "Không có mô tả"}
+              </p>
+              <p>
+                <b>Giá cơ bản:</b> {selectedTeam.price?.toLocaleString() || 0}₫
+              </p>
             </div>
-            <button onClick={() => setSelectedTeam(null)} style={styles.btnClose}>Đóng</button>
+            <button
+              onClick={() => setSelectedTeam(null)}
+              style={styles.btnClose}
+            >
+              Đóng
+            </button>
           </div>
         </div>
       )}
-
       {selectedOrder && (
         <div style={styles.overlay} onClick={() => setSelectedOrder(null)}>
           <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <h2 style={{borderBottom: '1px solid #eee', paddingBottom: '10px'}}>📦 Chi tiết đơn hàng</h2>
+            <h2 style={{ borderBottom: "1px solid #eee", paddingBottom: "10px" }}>
+              📦 Chi tiết đơn hàng
+            </h2>
             <div style={styles.modalContent}>
-               <p><b>Mã đơn:</b> {selectedOrder._id}</p>
-               <p><b>Người nhận:</b> {selectedOrder.receiver_name}</p>
-               <p><b>Số điện thoại:</b> {selectedOrder.receiver_phone}</p>
-               <p><b>Giá tiền:</b> {selectedOrder.price?.toLocaleString()}₫</p>
-               <p><b>Trạng thái:</b> {selectedOrder.status}</p>
+              <p>
+                <b>Mã đơn:</b> {selectedOrder._id}
+              </p>
+              <p>
+                <b>Người nhận:</b> {selectedOrder.receiver_name}
+              </p>
+              <p>
+                <b>Số điện thoại:</b> {selectedOrder.receiver_phone}
+              </p>
+              <p>
+                <b>Địa chỉ giao:</b> {selectedOrder.delivery_address}, {selectedOrder.delivery_province}
+              </p>
+              <p>
+                <b>Giá tiền:</b> {selectedOrder.price?.toLocaleString()}₫
+              </p>
+              <p>
+                <b>Trạng thái:</b> {getOrderStatusText(selectedOrder.status)}
+              </p>
             </div>
-            <button onClick={() => setSelectedOrder(null)} style={styles.btnClose}>Đóng</button>
+            <button
+              onClick={() => setSelectedOrder(null)}
+              style={styles.btnClose}
+            >
+              Đóng
+            </button>
           </div>
         </div>
       )}
-
       {showDeleteModal && (
         <div style={styles.overlay}>
           <div style={styles.confirmModal}>
-            <h3>Xác nhận sa thải</h3>
-            <p>Hành động này không thể hoàn tác. Bạn có chắc chắn muốn loại bỏ đội này?</p>
-            <div style={{display: 'flex', gap: '10px', marginTop: '20px'}}>
-               <button onClick={deleteTeam} style={styles.btnConfirm}>Đồng ý</button>
-               <button onClick={() => setShowDeleteModal(false)} style={styles.btnCancel}>Hủy</button>
+            <h3>Xác nhận sa thải đội</h3>
+            <p>
+              Hành động này <strong>không thể hoàn tác</strong>. Bạn có chắc chắn muốn loại bỏ đội này khỏi hệ thống?
+            </p>
+            <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
+              <button onClick={deleteTeam} style={styles.btnConfirm}>
+                Đồng ý, sa thải
+              </button>
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                style={styles.btnCancel}
+              >
+                Hủy
+              </button>
             </div>
           </div>
         </div>
@@ -263,7 +403,7 @@ const styles = {
   td: { padding: "14px 12px", fontSize: "14px", color: "#444" },
   tdPrimary: { padding: "14px 12px", fontSize: "14px", color: "#007bff", fontWeight: "600", cursor: "pointer" },
   idText: { fontFamily: "monospace", fontSize: "13px", color: "#777" },
-  priceText: { fontWeight: "700", color: "#2d3436", padding: "14px 12px" },
+  priceText: { fontWeight: "700", color: "#2d3436" },
   badgeApproved: { background: "#e1f7e9", color: "#155724", padding: "4px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: "600" },
   badgePending: { background: "#fff3cd", color: "#856404", padding: "4px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: "600" },
   btnGroup: { display: "flex", gap: "8px" },
@@ -271,21 +411,34 @@ const styles = {
   btnDelete: { background: "#dc3545", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px" },
   btnDetail: { background: "#f0f2f5", color: "#333", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px" },
   statusBadge: (status) => ({
-    padding: "4px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: "600",
-    background: status === "delivered" ? "#d4edda" : status === "pending" ? "#fff3cd" : "#f8d7da",
-    color: status === "delivered" ? "#155724" : status === "pending" ? "#856404" : "#721c24",
+    padding: "4px 10px",
+    borderRadius: "20px",
+    fontSize: "12px",
+    fontWeight: "600",
+    background:
+      status === "delivered"
+        ? "#d4edda"
+        : status === "pending" || status === "assigned"
+        ? "#fff3cd"
+        : "#f8d7da",
+    color:
+      status === "delivered"
+        ? "#155724"
+        : status === "pending" || status === "assigned"
+        ? "#856404"
+        : "#721c24",
   }),
   pagination: { display: "flex", justifyContent: "center", gap: "6px", marginTop: "25px" },
   pageNumber: { width: "35px", height: "35px", border: "1px solid #ddd", borderRadius: "8px", cursor: "pointer", fontWeight: "600" },
   pageArrow: { padding: "0 15px", border: "1px solid #ddd", borderRadius: "8px", background: "#fff", cursor: "pointer" },
   overlay: { position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.4)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 },
-  modal: { background: "#fff", padding: "30px", borderRadius: "16px", width: "400px", boxShadow: "0 10px 30px rgba(0,0,0,0.2)" },
-  modalContent: { margin: "20px 0", lineHeight: "1.6" },
-  btnClose: { width: "100%", padding: "10px", background: "#6c757d", color: "#fff", border: "none", borderRadius: "8px", cursor: "pointer" },
-  confirmModal: { background: "#fff", padding: "30px", borderRadius: "16px", width: "350px", textAlign: "center" },
-  btnConfirm: { background: "#dc3545", color: "#fff", border: "none", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" },
-  btnCancel: { background: "#f0f2f5", color: "#333", border: "none", padding: "10px 20px", borderRadius: "8px", cursor: "pointer" },
-  loading: { textAlign: "center", marginTop: "100px", fontSize: "18px", fontWeight: "600", color: "#666" }
+  modal: { background: "#fff", padding: "30px", borderRadius: "16px", width: "420px", maxWidth: "90vw", boxShadow: "0 10px 30px rgba(0,0,0,0.2)" },
+  modalContent: { margin: "20px 0", lineHeight: "1.8", color: "#444" },
+  btnClose: { width: "100%", padding: "12px", background: "#6c757d", color: "#fff", border: "none", borderRadius: "8px", cursor: "pointer", fontWeight: "600" },
+  confirmModal: { background: "#fff", padding: "30px", borderRadius: "16px", width: "380px", maxWidth: "90vw", textAlign: "center", boxShadow: "0 10px 30px rgba(0,0,0,0.2)" },
+  btnConfirm: { background: "#dc3545", color: "#fff", border: "none", padding: "10px 24px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" },
+  btnCancel: { background: "#f0f2f5", color: "#333", border: "none", padding: "10px 24px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" },
+  loading: { textAlign: "center", marginTop: "100px", fontSize: "18px", fontWeight: "600", color: "#666" },
 };
 
 export default AdminPanel;

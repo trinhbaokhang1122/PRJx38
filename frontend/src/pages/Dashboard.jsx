@@ -81,7 +81,6 @@ export default function Dashboard() {
       </header>
 
       <div style={gridStyle}>
-        {/* BOX DOANH THU */}
         <div style={boxStyle}>
           <div style={iconHeader}>
             <span style={{ fontSize: 24 }}>💰</span>
@@ -107,7 +106,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* BOX SỐ ĐƠN */}
         <div style={boxStyle}>
           <div style={iconHeader}>
             <span style={{ fontSize: 24 }}>📦</span>
@@ -137,7 +135,6 @@ export default function Dashboard() {
   );
 }
 
-// ================= Styles =================
 
 const containerStyle = {
   padding: "40px 20px",

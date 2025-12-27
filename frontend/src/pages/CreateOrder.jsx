@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import axiosClient from "../api/axiosClient";
 import { useNavigate } from "react-router-dom";
 import {
@@ -24,6 +24,13 @@ const CreateOrder = () => {
   const navigate = useNavigate();
 
   const [priceConfig, setPriceConfig] = useState(null);
+  const [distance, setDistance] = useState(null); // meters
+  const [price, setPrice] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [paypalLoading, setPaypalLoading] = useState(false);
+  const [orderId, setOrderId] = useState(null);
+  const [message, setMessage] = useState("");
+
   const [form, setForm] = useState({
     sender_name: "", sender_phone: "", pickup_address: "", pickup_province: "",
     receiver_name: "", receiver_phone: "", delivery_address: "", delivery_province: "",
@@ -31,155 +38,194 @@ const CreateOrder = () => {
     vehicle_type: "Xe máy", service_type: "Trọn gói",
     floors: "", workers: 1, distance_to_truck: "", note: "",
   });
-
-  const [distance, setDistance] = useState(null);
-  const [price, setPrice] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
-  const [orderId, setOrderId] = useState(null);
-  const [paypalLoading, setPaypalLoading] = useState(false);
-
   useEffect(() => {
-    const load = async () => {
+    const loadPriceConfig = async () => {
       try {
         const res = await axiosClient.get("/prices");
         const payload = res.data?.data ?? res.data;
-        let cfg = null;
-        if (Array.isArray(payload)) cfg = payload[0] ?? null;
-        else cfg = payload ?? null;
-        setPriceConfig(cfg);
+        const config = Array.isArray(payload) ? payload[0] : payload;
+        setPriceConfig(config || null);
       } catch (err) {
-        console.error("Không tải được bảng giá:", err);
+        console.error(err);
         setMessage("Không tải được bảng giá hệ thống");
       }
     };
-    load();
+    loadPriceConfig();
   }, []);
 
-  const getCoordinates = async (address) => {
+  const getCoordinates = async (fullAddress) => {
+    if (!fullAddress || fullAddress.trim().length < 5) return null;
     try {
-      if (!address || address.length < 5) return null;
-      const tryFetch = async (q) => {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=VN&limit=1&q=${encodeURIComponent(q)}`);
+      const queries = [
+        fullAddress,
+        fullAddress.replace(/,?\s*Việt Nam\s*$/i, "").trim(),
+      ];
+      for (const q of queries) {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&countrycodes=vn&limit=1&q=${encodeURIComponent(q)}`
+        );
         const data = await res.json();
-        if (data && data.length > 0) return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
-        return null;
-      };
-      let r = await tryFetch(address);
-      if (r) return r;
-      return await tryFetch(address.replace(/,?\s*Việt Nam/i, ""));
-    } catch { return null; }
+        if (data && data.length > 0) {
+          return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+        }
+      }
+      return null;
+    } catch {
+      return null;
+    }
   };
 
-  const estimateRoute = async (pickup, delivery) => {
+  const estimateDistance = async (from, to) => {
+    if (!from || !to) return 0;
     try {
-      if (!pickup || !delivery) return 0;
-      const url = `https://graphhopper.com/api/1/route?point=${pickup.lat},${pickup.lon}&point=${delivery.lat},${delivery.lon}&vehicle=car&locale=vi&calc_points=false&key=${GRAPHHOPPER_KEY}`;
+      const url = `https://graphhopper.com/api/1/route?point=${from.lat},${from.lon}&point=${to.lat},${to.lon}&vehicle=car&locale=vi&calc_points=false&key=${GRAPHHOPPER_KEY}`;
       const res = await fetch(url);
+      if (!res.ok) return 0;
       const data = await res.json();
       return data?.paths?.[0]?.distance || 0;
-    } catch (err) {
+    } catch {
       return 0;
     }
   };
 
-  const calculatePrice = (distMeters, weightKg, vehicle, floors, workers) => {
-    if (!distMeters || !weightKg) return 0;
-    const km = distMeters / 1000;
-    const base_price = Number(priceConfig?.base_price ?? 0);
-    const per_km_price = Number(priceConfig?.per_km_price ?? priceConfig?.price_per_km ?? 0);
-    const overweight_fee = Number(priceConfig?.overweight_fee ?? 3000);
-    const express_fee = Number(priceConfig?.express_fee ?? 0);
+  const calculatePrice = useCallback(() => {
+    if (!priceConfig || !distance || !form.weight_kg) {
+      setPrice(0);
+      return;
+    }
 
-    const vehicleRates = priceConfig?.vehicle_rates ?? null;
-    let vehicleRate = 6000;
-    if (vehicleRates && vehicleRates[vehicle]) vehicleRate = Number(vehicleRates[vehicle]);
-    else vehicleRate = vehicle === "Xe máy" ? 6000 : vehicle === "Xe tải nhỏ" ? 10000 : 15000;
+    const km = distance / 1000;
+    const weight = parseFloat(form.weight_kg) || 0;
+    const floors = parseInt(form.floors) || 0;
+    const workers = parseInt(form.workers) || 1;
 
-    let total = base_price;
-    if (per_km_price > 0) {
-      total += km * per_km_price;
-      const weightFactor = Number(priceConfig?.weight_factor ?? 1);
-      total += km * (weightKg - 1) * per_km_price * (weightFactor - 1);
+    let total = Number(priceConfig.base_price || 0);
+    if (priceConfig.per_km_price > 0) {
+      total += km * priceConfig.per_km_price;
     } else {
-      total += Math.round(km * Number(weightKg) * vehicleRate);
+      const rates = priceConfig.vehicle_rates || {};
+      let rate = rates[form.vehicle_type] || 
+        (form.vehicle_type === "Xe máy" ? 6000 : form.vehicle_type === "Xe tải nhỏ" ? 10000 : 15000);
+      total += Math.round(km * weight * rate);
     }
 
-    total += (parseInt(floors) || 0) * Number(priceConfig?.floor_fee ?? 20000);
-    total += (parseInt(workers) || 1) * Number(priceConfig?.worker_fee ?? 50000);
-
-    if (priceConfig?.distance_to_truck_fee_per_m && form.distance_to_truck) {
-      total += (parseFloat(form.distance_to_truck) || 0) * Number(priceConfig.distance_to_truck_fee_per_m);
+    if (weight > 1) total += (weight - 1) * (priceConfig.overweight_fee || 3000);
+    total += floors * (priceConfig.floor_fee || 20000);
+    total += workers * (priceConfig.worker_fee || 50000);
+    if (form.distance_to_truck) {
+      total += (parseFloat(form.distance_to_truck) || 0) * (priceConfig.distance_to_truck_fee_per_m || 0);
     }
-    if (weightKg > 1) total += (weightKg - 1) * overweight_fee;
-    if (form.service_type === "Giao nhanh" || form.service_type === "Express") total += express_fee;
-    if (form.package_type === "Đồ dễ vỡ") total += Number(priceConfig?.fragile_fee ?? 0);
+    if (form.service_type === "Giao nhanh") total += (priceConfig.express_fee || 0);
+    if (form.package_type === "Đồ dễ vỡ") total += (priceConfig.fragile_fee || 0);
 
-    return Math.round(total);
-  };
+    setPrice(Math.round(total));
+  }, [distance, form, priceConfig]);
 
-  const handleChange = async (e) => {
+  useEffect(() => {
+    const timeout = setTimeout(async () => {
+      if (
+        form.pickup_address &&
+        form.pickup_province &&
+        form.delivery_address &&
+        form.delivery_province
+      ) {
+        const pickupFull = `${form.pickup_address}, ${form.pickup_province}, Việt Nam`;
+        const deliveryFull = `${form.delivery_address}, ${form.delivery_province}, Việt Nam`;
+
+        const from = await getCoordinates(pickupFull);
+        const to = await getCoordinates(deliveryFull);
+
+        if (from && to) {
+          const dist = await estimateDistance(from, to);
+          setDistance(dist);
+        } else {
+          setDistance(0);
+          setMessage("Không tìm thấy một hoặc cả hai địa chỉ. Vui lòng kiểm tra lại.");
+        }
+      } else {
+        setDistance(null);
+      }
+    }, 800); 
+
+    return () => clearTimeout(timeout);
+  }, [
+    form.pickup_address,
+    form.pickup_province,
+    form.delivery_address,
+    form.delivery_province,
+  ]);
+
+  useEffect(() => {
+    calculatePrice();
+  }, [calculatePrice]);
+
+  const handleChange = (e) => {
     const { name, value } = e.target;
     let newValue = value;
 
     if (name === "sender_phone" || name === "receiver_phone") {
-      newValue = value.replace(/\D/g, "");
-      if (newValue.length > 10) return;
+      newValue = value.replace(/\D/g, "").slice(0, 10);
     }
 
-    const updatedForm = { ...form, [name]: newValue };
-    setForm(updatedForm);
-
-    if (["pickup_address", "delivery_address", "pickup_province", "delivery_province"].includes(name)) {
-      const pickupFull = `${updatedForm.pickup_address}, ${updatedForm.pickup_province}, Việt Nam`;
-      const deliveryFull = `${updatedForm.delivery_address}, ${updatedForm.delivery_province}, Việt Nam`;
-      const pickupCoord = await getCoordinates(pickupFull);
-      const deliveryCoord = await getCoordinates(deliveryFull);
-      const distMeters = await estimateRoute(pickupCoord, deliveryCoord);
-      setDistance(distMeters);
-      setPrice(calculatePrice(distMeters, updatedForm.weight_kg || 0, updatedForm.vehicle_type, updatedForm.floors, updatedForm.workers));
-    } else if (["weight_kg", "vehicle_type", "floors", "workers", "distance_to_truck", "package_type", "service_type"].includes(name)) {
-      setPrice(calculatePrice(distance, updatedForm.weight_kg || 0, updatedForm.vehicle_type, updatedForm.floors, updatedForm.workers));
-    }
+    setForm(prev => ({ ...prev, [name]: newValue }));
+    setMessage(""); 
   };
 
   const handleCreateOrder = async (e) => {
     e.preventDefault();
-    const phoneRegex = /^(0[3|5|7|8|9])([0-9]{8})$/;
+
+    const phoneRegex = /^(03|05|07|08|09)\d{8}$/;
     if (!phoneRegex.test(form.sender_phone)) {
-      setMessage("Số điện thoại người gửi không hợp lệ (10 số, đầu 03,05,07,08,09)");
+      setMessage("Số điện thoại người gửi không hợp lệ (10 số, bắt đầu bằng 03,05,07,08,09)");
       return;
     }
     if (!phoneRegex.test(form.receiver_phone)) {
-      setMessage("Số điện thoại người nhận không hợp lệ.");
+      setMessage("Số điện thoại người nhận không hợp lệ");
       return;
     }
 
-    if (price <= 0) {
-      setMessage("Vui lòng nhập đầy đủ địa chỉ để tính phí vận chuyển.");
+    if (!distance || distance === 0 || price <= 0) {
+      setMessage("Không thể tính khoảng cách. Vui lòng kiểm tra lại địa chỉ.");
       return;
     }
 
     setLoading(true);
     setMessage("");
+
     try {
-      const payload = { ...form, distance_km: distance ? distance / 1000 : 0, price, price_config_id: priceConfig?.id ?? priceConfig?._id ?? null };
+      const payload = {
+        ...form,
+        price,
+        distance_km: Math.round(distance / 1000),
+        price_config_id: priceConfig?._id || priceConfig?.id || null,
+      };
+
       const res = await axiosClient.post("/orders", payload);
-      setOrderId(res.data.order._id || res.data._id);
-    } catch (error) {
-      setMessage("Lỗi hệ thống: " + (error.response?.data?.message || error.message));
-    } finally { setLoading(false); }
+      const newOrderId = res.data?.order?._id || res.data?._id || res.data?.id;
+      if (newOrderId) {
+        setOrderId(newOrderId);
+        setMessage("✅ Đơn hàng đã được tạo thành công!");
+      } else {
+        throw new Error("Không nhận được ID đơn hàng");
+      }
+    } catch (err) {
+      setMessage("Lỗi tạo đơn: " + (err.response?.data?.message || err.message));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handlePaypalApprove = async (data, actions) => {
     setPaypalLoading(true);
     try {
       await actions.order.capture();
-      setMessage("✅ Thanh toán hoàn tất! Đơn hàng đã được xác nhận.");
+      setMessage("✅ Thanh toán thành công! Đang chuyển đến chi tiết đơn hàng...");
       setTimeout(() => navigate(`/orders/${orderId}`), 2000);
     } catch (err) {
-      setMessage("Giao dịch không thành công. Vui lòng thử lại.");
-    } finally { setPaypalLoading(false); }
+      setMessage("Thanh toán thất bại. Vui lòng thử lại.");
+    } finally {
+      setPaypalLoading(false);
+    }
   };
 
   return (
@@ -336,7 +382,7 @@ const styles = {
     fontSize: "15px", 
     outline: "none", 
     resize: "none", 
-    boxSizing: "border-box", // Cực kỳ quan trọng để không bị tràn
+    boxSizing: "border-box",
     display: "block",
     fontFamily: "inherit"
   },

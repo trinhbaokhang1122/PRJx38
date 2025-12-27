@@ -54,7 +54,7 @@ const PriceTimeline = () => {
     ),
     datasets: [
       {
-        label: "Giá cố định",                    // Đổi thành ngắn gọn
+        label: "Giá cố định",                    
         data: timeline.map((i) => i.base_price),
         borderColor: "#2563eb",
         backgroundColor: "rgba(37, 99, 235, 0.15)",
@@ -68,7 +68,7 @@ const PriceTimeline = () => {
         borderWidth: 4,
       },
       {
-        label: "Giá/km",                          // Chỉ để "Giá/km" – cực kỳ gọn
+        label: "Giá/km",                          
         data: timeline.map((i) => i.per_km_price),
         borderColor: "#dc2626",
         backgroundColor: "rgba(220, 38, 38, 0.15)",
@@ -162,8 +162,6 @@ const PriceTimeline = () => {
           <Line data={chartData} options={options} />
         )}
       </div>
-
-      {/* Phần chi tiết bên dưới giữ nguyên đẹp như cũ */}
       <h3 style={{ margin: "40px 0 20px", color: "#1e40af", fontWeight: "bold" }}>
         Chi tiết các lần cập nhật
       </h3>

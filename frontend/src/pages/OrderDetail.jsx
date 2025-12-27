@@ -54,7 +54,6 @@ const OrderDetail = () => {
   return (
     <div style={styles.page}>
       <div style={styles.container}>
-        {/* Header */}
         <div style={styles.header}>
           <button onClick={() => navigate(-1)} style={styles.backBtn}>← Quay lại</button>
           <div style={styles.statusBadge}>{formatStatus(order.status)}</div>
@@ -64,7 +63,6 @@ const OrderDetail = () => {
         <p style={styles.orderIdText}>Mã số: #{order._id.toUpperCase()}</p>
 
         <div style={styles.contentGrid}>
-          {/* CỘT TRÁI: THÔNG TIN VẬN CHUYỂN */}
           <div style={styles.mainInfo}>
             <div style={styles.infoSection}>
               <h3 style={styles.sectionTitle}>📍 Lộ trình vận chuyển</h3>
@@ -103,7 +101,6 @@ const OrderDetail = () => {
             </div>
           </div>
 
-          {/* CỘT PHẢI: QR & GIÁ TIỀN */}
           <div style={styles.sideBar}>
             <div style={styles.qrCard}>
               <h3 style={styles.qrTitle}>Mã tra cứu nhanh</h3>

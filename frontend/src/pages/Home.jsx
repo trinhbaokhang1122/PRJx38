@@ -2,7 +2,6 @@ import React, { useContext, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 
-// ICONS
 import { 
   FaShippingFast, FaShieldAlt, FaWallet, FaBoxOpen, 
   FaTruck, FaLock, FaUsers, FaSearch 
@@ -299,7 +298,6 @@ const Home = () => {
     <div className="main-container">
       <style>{css}</style>
 
-      {/* HERO / HEADER SECTION */}
       <section className="hero-section">
         <div className="animate">
           <h1 className="hero-title">Dịch vụ vận chuyển nhà toàn quốc</h1>
@@ -316,8 +314,6 @@ const Home = () => {
           </div>
         </div>
       </section>
-
-      {/* FEATURES ROW */}
       <div className="features-row">
         <div className="feature-card animate delay-1">
           <FaShippingFast className="icon-box" />
@@ -336,7 +332,7 @@ const Home = () => {
         </div>
       </div>
 
-      {/* PROCESS SECTION */}
+
       <section className="process-section">
         <div className="section-header animate">
           <h2 className="section-title">Quy trình dịch vụ</h2>
@@ -356,7 +352,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* TRACKING BOX */}
+
       <section className="tracking-section animate">
         <div className="tracking-box">
           <FaSearch style={{fontSize: '2rem', color: 'var(--accent)'}} />
@@ -374,7 +370,6 @@ const Home = () => {
         </div>
       </section>
 
-      {/* EXTRA SERVICES */}
       <section className="process-section" style={{background: '#fff'}}>
         <div className="section-header animate">
           <h2 className="section-title">Dịch vụ mở rộng</h2>
@@ -395,7 +390,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* FOOTER */}
+
       <footer className="footer">
         <div className="footer-container">
           <div>

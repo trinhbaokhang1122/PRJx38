@@ -4,9 +4,7 @@ import axiosClient from "../api/axiosClient";
 const OrdersManager = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedOrder, setSelectedOrder] = useState(null); // 👈 lưu đơn đang xem
-
-  // 🔹 Lấy tất cả đơn
+  const [selectedOrder, setSelectedOrder] = useState(null);
   const fetchOrders = async () => {
     try {
       setLoading(true);
@@ -23,7 +21,6 @@ const OrdersManager = () => {
     fetchOrders();
   }, []);
 
-  // 🔹 Xem chi tiết đơn (mở modal)
   const handleViewDetail = async (id) => {
     try {
       const res = await axiosClient.get(`/orders/${id}`);
@@ -33,11 +30,7 @@ const OrdersManager = () => {
       alert("Không thể tải chi tiết đơn hàng.");
     }
   };
-
-  // 🔹 Đóng modal
   const closeModal = () => setSelectedOrder(null);
-
-  // 🔹 Cập nhật trạng thái
   const handleChangeStatus = async (id, status) => {
     try {
       await axiosClient.put(`/orders/${id}/status`, { status });
@@ -47,8 +40,6 @@ const OrdersManager = () => {
       alert("Cập nhật trạng thái thất bại.");
     }
   };
-
-  // 🔹 Xóa đơn
   const handleDelete = async (id) => {
     if (!window.confirm("Bạn có chắc muốn xóa đơn này không?")) return;
     try {
@@ -79,7 +70,7 @@ const OrdersManager = () => {
                 <div>
                   <strong>ID:</strong>{" "}
                   <span
-                    onClick={() => handleViewDetail(order._id)} // 👈 click để xem chi tiết
+                    onClick={() => handleViewDetail(order._id)} 
                     style={{ cursor: "pointer", color: "#000", textDecoration: "none" }}
                   >
                     {order._id}
@@ -129,7 +120,6 @@ const OrdersManager = () => {
         </div>
       )}
 
-      {/* 🔹 Modal chi tiết đơn */}
       {selectedOrder && (
         <div
           className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center"

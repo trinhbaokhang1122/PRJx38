@@ -13,7 +13,7 @@ const CreateTeam = () => {
     base_price: "",
     price_per_km: "",
     max_distance_km: "",
-    member_count: "", // Số lượng thành viên nhập từ Form
+    member_count: "", 
     region: "",
     price: "", 
   });
@@ -31,7 +31,6 @@ const CreateTeam = () => {
     setMessage("");
 
     try {
-      // Chuẩn hóa dữ liệu trước khi gửi: Chuyển các ô nhập số từ chuỗi sang kiểu Number
       const dataToSubmit = {
         ...form,
         member_count: parseInt(form.member_count) || 0,
@@ -58,7 +57,6 @@ const CreateTeam = () => {
       <h2 style={styles.title}>🚛 Đăng ký đội vận chuyển</h2>
 
       <form style={styles.form} onSubmit={handleSubmit}>
-        {/* Cột trái: Thông tin đội */}
         <div style={styles.column}>
           <h3 style={styles.sectionTitle}>📋 Thông tin đội</h3>
 
@@ -142,7 +140,6 @@ const CreateTeam = () => {
           </label>
         </div>
 
-        {/* Cột phải: Thông tin phương tiện */}
         <div style={styles.column}>
           <h3 style={styles.sectionTitle}>🚚 Thông tin phương tiện</h3>
 

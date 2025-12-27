@@ -5,16 +5,12 @@ import { FaEnvelope, FaLock, FaKey, FaTruck, FaArrowLeft } from "react-icons/fa"
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
-  // Quản lý trạng thái: 1 = Nhập Email, 2 = Nhập OTP & Mật khẩu mới
   const [step, setStep] = useState(1); 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState(""); 
   const [password, setPassword] = useState("");
-
-  // BƯỚC 1: Gửi mã OTP về Email
   const handleSendEmail = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -22,7 +18,7 @@ const ForgotPassword = () => {
     try {
       await axios.post("http://localhost:5000/api/users/forgot-password", { email });
       setMessage("✅ Mã xác thực đã được gửi! Vui lòng kiểm tra Email.");
-      setStep(2); // Tự động chuyển sang giao diện nhập mã
+      setStep(2); 
     } catch (error) {
       setMessage("❌ " + (error.response?.data?.message || "Email không tồn tại!"));
     } finally {
@@ -30,18 +26,15 @@ const ForgotPassword = () => {
     }
   };
 
-  // BƯỚC 2: Nhập OTP + Pass mới để xác nhận đổi
   const handleResetPassword = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage("");
     try {
-      // Gửi mã OTP (resetToken) lên API reset-password
       await axios.post(`http://localhost:5000/api/users/reset-password/${otp}`, { 
         password: password 
       });
       setMessage("✅ Đổi mật khẩu thành công!");
-      // Sau 2 giây chuyển về trang đăng nhập
       setTimeout(() => navigate("/login"), 2000);
     } catch (error) {
       setMessage("❌ Mã OTP không đúng hoặc đã hết hạn!");
