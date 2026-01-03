@@ -4,7 +4,7 @@ import axiosClient from "../api/axiosClient";
 
 const TeamsManager = () => {
   const [teams, setTeams] = useState([]);
-  const [orders, setOrders] = useState([]); // toàn bộ đơn (admin)
+  const [orders, setOrders] = useState([]);
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [loading, setLoading] = useState(true);
 

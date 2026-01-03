@@ -1,7 +1,6 @@
 import QRCode from "qrcode";
 import PDFDocument from "pdfkit";
 import puppeteer from "puppeteer";
-
 import Order from "../models/Order.js";
 import User from "../models/User.js";
 import {
@@ -10,9 +9,7 @@ import {
   sendOrderStatusMail,
 } from "../utils/sendMail.js";
 
-/* =========================
-   PDF INVOICE (PDFKit)
-========================= */
+
 const generateInvoiceBuffer = (order) => {
   return new Promise((resolve) => {
     const doc = new PDFDocument({ margin: 50 });
@@ -68,9 +65,6 @@ const generateInvoiceBuffer = (order) => {
   });
 };
 
-/* =========================
-   PRICE / TIME HELPERS
-========================= */
 const timeBasedFee = (price) => {
   const hour = new Date().getHours();
   if (hour >= 22 || hour < 5) {
@@ -118,9 +112,7 @@ const getStartDateByType = (type) => {
   return new Date(startVN.getTime() - 7 * 3600 * 1000);
 };
 
-/* =========================
-   ORDER CORE
-========================= */
+
 export const createOrder = async (req, res) => {
   try {
     const finalPrice = timeBasedFee(req.body.price);
@@ -368,9 +360,7 @@ export const getOrderInvoiceHTMLPDF = async (req, res) => {
     res.status(500).json({ message: "Lỗi tạo PDF từ HTML." });
   }
 };
-/* =========================
-   UPDATE / CANCEL
-========================= */
+
 export const updateOrderStatus = async (req, res) => {
   try {
     const { status } = req.body;
@@ -431,9 +421,6 @@ export const cancelOrder = async (req, res) => {
   }
 };
 
-/* =========================
-   GET ORDERS
-========================= */
 export const getMyOrders = async (req, res) => {
   try {
     const orders = await Order.find({
@@ -495,9 +482,7 @@ export const deleteOrder = async (req, res) => {
   }
 };
 
-/* =========================
-   PRICE ESTIMATE
-========================= */
+
 export const estimateOrderPrice = async (req, res) => {
   try {
     const { floors = 0, workers = 0, weight_kg = 1 } = req.body;
@@ -519,9 +504,7 @@ export const estimateOrderPrice = async (req, res) => {
   }
 };
 
-/* =========================
-   REVENUE STATS
-========================= */
+
 export const getRevenueStats = async (req, res) => {
   try {
     const { date, type = "day" } = req.query;
@@ -588,9 +571,6 @@ export const getOrderStats = async (req, res) => {
   }
 };
 
-/* =========================
-   HOURLY STATS
-========================= */
 export const getAllStats = async (req, res) => {
   try {
     const selectedDate = req.query.date;
@@ -651,9 +631,7 @@ export const getAllStats = async (req, res) => {
   }
 };
 
-/* =========================
-   REVENUE BUCKETS
-========================= */
+
 export const getRevenueBuckets = async (req, res) => {
   try {
     const { date, type = "day" } = req.query;
@@ -740,9 +718,6 @@ export const getRevenueBuckets = async (req, res) => {
   }
 };
 
-/* =========================
-   ORDER COUNT BUCKETS
-========================= */
 export const getOrderCountBuckets = async (req, res) => {
   try {
     const { date, type = "day" } = req.query;
